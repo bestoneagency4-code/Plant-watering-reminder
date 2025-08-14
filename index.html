@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Plant Care • Watering Reminder</title>
+  <meta name="description" content="Minimal plant care watering reminder with local storage. Add your plants, track watering frequency, and get simple countdowns." />
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --card:#111318;
+      --muted:#9aa3af;
+      --txt:#e5e7eb;
+      --accent:#6ee7b7;
+      --accent-2:#22d3ee;
+      --danger:#fb7185;
+      --ok:#86efac;
+      --ring: rgba(255,255,255,0.1);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #18202b 0%, #0b0c10 60%) no-repeat fixed;
+      color:var(--txt);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+    .container{
+      max-width:960px;
+      margin:0 auto;
+      padding:24px;
+    }
+    header{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    h1{font-size:clamp(20px,3vw,28px); margin:0; letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:14px}
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.00));
+      border:1px solid var(--ring);
+      border-radius:16px;
+      padding:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .add-form{
+      display:grid; gap:12px;
+      grid-template-columns: 1fr;
+      margin-bottom:18px;
+    }
+    .row{
+      display:grid; gap:12px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width:640px){
+      .add-form{grid-template-columns: 1.1fr 1fr .9fr auto}
+      .row{grid-template-columns: 1fr 1fr}
+    }
+    label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
+    input, select, button{
+      width:100%;
+      border-radius:12px;
+      border:1px solid var(--ring);
+      background:#0f1116;
+      color:var(--txt);
+      padding:12px 14px;
+      outline:none;
+      transition: box-shadow .18s ease, transform .05s ease;
+    }
+    input:focus, select:focus{
+      box-shadow:0 0 0 3px rgba(110,231,183,.15);
+      border-color: rgba(110,231,183,.45);
+    }
+    button{
+      cursor:pointer; border:none; background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      color:#06201a; font-weight:700;
+    }
+    button:active{ transform: translateY(1px) }
+    .ghost{
+      background:transparent; border:1px solid var(--ring); color:var(--txt);
+    }
+    .list{
+      display:grid; gap:12px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width:700px){
+      .list{grid-template-columns: 1fr 1fr}
+    }
+    .plant-card{
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .plant-top{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+    }
+    .plant-meta{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      color:var(--muted); font-size:13px;
+    }
+    .badge{
+      padding:4px 8px; border-radius:999px; border:1px solid var(--ring); background:#0f1116; color:var(--txt);
+    }
+    .emoji{
+      font-size:28px; line-height:1;
+      transition: transform .3s ease, filter .3s ease, opacity .3s ease;
+    }
+    .progress{
+      height:10px; background:#0f1116; border-radius:999px; border:1px solid var(--ring);
+      overflow:hidden;
+    }
+    .bar{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,var(--ok),var(--accent-2));
+      transition: width .4s ease;
+    }
+    .statline{
+      display:flex; justify-content:space-between; font-size:13px; color:var(--muted);
+    }
+    .actions{
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .danger{ color:#ffd6db; border-color:rgba(251,113,133,.35) }
+    .overdue{ color:var(--danger) }
+    footer{
+      margin:28px 0 12px; color:var(--muted); font-size:12px; text-align:center;
+    }
+    .small{font-size:12px; color:var(--muted)}
+    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Plant Care • Watering Reminder</h1>
+        <div class="sub">Add your plants, set watering frequency, and track the next watering day. All data is stored locally in your browser.</div>
+      </div>
+      <button id="exportBtn" class="ghost" title="Backup your plants JSON">Export</button>
+    </header>
+
+    <!-- Add Plant -->
+    <section class="card">
+      <form id="addForm" class="add-form" autocomplete="off">
+        <div>
+          <label for="plantName">Plant name</label>
+          <input id="plantName" name="plantName" placeholder="e.g., Monstera, Pothos" required />
+        </div>
+        <div>
+          <label for="plantType">Select type (prefills frequency)</label>
+          <select id="plantType" name="plantType">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <div>
+          <label for="frequency">Watering frequency (days)</label>
+          <input id="frequency" name="frequency" type="number" min="1" step="1" value="7" required />
+        </div>
+        <div>
+          <label for="lastWatered">Last watered</label>
+          <input id="lastWatered" name="lastWatered" type="date" />
+        </div>
+        <div style="grid-column: 1/-1; display:flex; gap:12px; flex-wrap:wrap">
+          <button type="submit">Add Plant</button>
+          <label class="small" style="display:flex;align-items:center;gap:8px">
+            <input id="startToday" type="checkbox" checked />
+            Start countdown from today (ignore last watered)
+          </label>
+          <label class="small" style="display:flex;align-items:center;gap:8px">
+            <input id="importToggle" type="checkbox" />
+            Import JSON
+          </label>
+        </div>
+        <div id="importWrap" class="row" style="display:none">
+          <div>
+            <label for="importJson">Paste JSON (backup)</label>
+            <input id="importJson" placeholder='[{"id":"...","name":"Snake Plant",...}]' />
+          </div>
+          <div style="align-self:end">
+            <button type="button" id="importBtn" class="ghost">Import</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- List -->
+    <section style="margin-top:16px">
+      <div class="list" id="plantList"></div>
+      <div id="emptyState" class="card" style="margin-top:12px; display:none">
+        <strong>No plants yet.</strong>
+        <div class="small" style="margin-top:6px">Add a plant above to start tracking. Everything works offline after first load.</div>
+      </div>
+    </section>
+
+    <footer>
+      Built as a static page. Your data never leaves this device.
+    </footer>
+  </div>
+
+  <template id="plantCardTpl">
+    <div class="card plant-card" data-id="">
+      <div class="plant-top">
+        <div style="display:flex; gap:10px; align-items:center">
+          <div class="emoji" aria-hidden="true">🌿</div>
+          <div>
+            <div style="font-weight:700" class="title"></div>
+            <div class="plant-meta">
+              <span class="badge type"></span>
+              <span class="badge freq"></span>
+            </div>
+          </div>
+        </div>
+        <button class="ghost danger delBtn" title="Delete plant">Delete</button>
+      </div>
+
+      <div class="statline">
+        <div>Next: <span class="next"></span></div>
+        <div class="remaining"></div>
+      </div>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Watering progress">
+        <div class="bar"></div>
+      </div>
+
+      <div class="statline">
+        <div>Last watered: <span class="last"></span></div>
+        <div>Due every <span class="freq2"></span> days</div>
+      </div>
+
+      <div class="actions">
+        <button class="waterBtn">I watered it</button>
+        <button class="ghost minus1Btn" title="Mark as watered yesterday">Watered yesterday</button>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // --- Starter plant library (can extend anytime)
+    const PLANT_PRESETS = [
+      { label: "Snake Plant (Sansevieria)", days: 14, emoji: "🪴" },
+      { label: "Monstera", days: 7, emoji: "🌿" },
+      { label: "Pothos (Epipremnum)", days: 7, emoji: "🌱" },
+      { label: "ZZ Plant (Zamioculcas)", days: 14, emoji: "🌵" },
+      { label: "Succulent (Generic)", days: 21, emoji: "🌵" },
+      { label: "Peace Lily (Spathiphyllum)", days: 6, emoji: "🌼" },
+      { label: "Aloe", days: 18, emoji: "🌵" },
+      { label: "Fiddle Leaf Fig", days: 7, emoji: "🍃" },
+    ];
+
+    // --- Storage helpers
+    const KEY = "pcwr.v1.plants";
+    const $ = (s, el=document) => el.querySelector(s);
+    const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+
+    function loadPlants(){
+      try{
+        const raw = localStorage.getItem(KEY);
+        return raw ? JSON.parse(raw) : [];
+      }catch{ return []; }
+    }
+    function savePlants(list){ localStorage.setItem(KEY, JSON.stringify(list)); }
+
+    function uid(){ return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+    // --- Date utilities (respect local timezone)
+    const DAY = 24*60*60*1000;
+    const todayLocalDateOnly = () => {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate()); // midnight local
+    };
+    function addDays(date, days){
+      const d = new Date(date.getTime());
+      d.setDate(d.getDate()+days);
+      return d;
+    }
+    function fmtDate(d){
+      return d ? d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) : "—";
+    }
+    function daysBetween(a,b){ // whole days a->b
+      return Math.floor((b.getTime() - a.getTime()) / DAY);
+    }
+
+    // --- State & UI
+    let plants = loadPlants();
+    const plantType = $("#plantType");
+    const freqInput = $("#frequency");
+    const nameInput = $("#plantName");
+    const lastWateredInput = $("#lastWatered");
+    const startToday = $("#startToday");
+    const importToggle = $("#importToggle");
+    const importWrap = $("#importWrap");
+    const importJson = $("#importJson");
+    const importBtn = $("#importBtn");
+    const exportBtn = $("#exportBtn");
+
+    // Populate preset select
+    function initPresets(){
+      PLANT_PRESETS.forEach((p,i)=>{
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = `${p.label} • ${p.days}d`;
+        plantType.appendChild(opt);
+      });
+      plantType.addEventListener("change", ()=>{
+        const p = PLANT_PRESETS[plantType.value];
+        if(p){ freqInput.value = p.days; if(!nameInput.value) nameInput.value = p.label; }
+      });
+      // seed defaults
+      plantType.value = 1; // Monstera
+      plantType.dispatchEvent(new Event("change"));
+    }
+
+    // Render plant cards
+    const listEl = $("#plantList");
+    const tpl = $("#plantCardTpl");
+    const emptyState = $("#emptyState");
+
+    function computeDerived(p){
+      const last = new Date(p.lastWatered);
+      const next = addDays(last, p.frequency);
+      const t0 = last;
+      const t1 = next;
+      const now = todayLocalDateOnly();
+
+      const totalDays = Math.max(1, daysBetween(t0, t1)); // avoid /0
+      const elapsed = Math.max(0, Math.min(totalDays, daysBetween(t0, now)));
+      let pct = Math.round((elapsed / totalDays) * 100);
+      pct = Math.max(0, Math.min(100, pct));
+
+      const remaining = daysBetween(now, t1); // can be negative (overdue)
+
+      // Emoji mood (simple visual feedback)
+      // more overdue => more grayscale & tilt
+      let moodTilt = 0;
+      let moodGray = 0;
+      let moodOpacity = 1;
+      if(remaining < 0){
+        const over = Math.abs(remaining);
+        moodTilt = Math.min(12, 4 + over*2);
+        moodGray = Math.min(1, 0.2 + over*0.15);
+        moodOpacity = Math.max(0.65, 1 - over*0.08);
+      } else if (remaining <= 1){
+        moodTilt = 4;
+        moodGray = 0.2;
+      }
+
+      return { last, next, pct, remaining, moodTilt, moodGray, moodOpacity };
+    }
+
+    function render(){
+      listEl.innerHTML = "";
+      if(plants.length === 0){ emptyState.style.display="block"; return; }
+      emptyState.style.display="none";
+
+      plants
+        .slice()
+        .sort((a,b)=> a.name.localeCompare(b.name))
+        .forEach(p=>{
+          const node = tpl.content.firstElementChild.cloneNode(true);
+          node.dataset.id = p.id;
+
+          const title = $(".title", node);
+          const type = $(".type", node);
+          const freq = $(".freq", node);
+          const freq2 = $(".freq2", node);
+          const next = $(".next", node);
+          const last = $(".last", node);
+          const bar = $(".bar", node);
+          const prog = $(".progress", node);
+          const remaining = $(".remaining", node);
+          const emoji = $(".emoji", node);
+
+          title.textContent = p.name;
+          type.textContent = p.type;
+          freq.textContent = `${p.frequency}d`;
+          freq2.textContent = p.frequency;
+
+          const d = computeDerived(p);
+          next.textContent = fmtDate(d.next);
+          last.textContent = fmtDate(d.last);
+          bar.style.width = d.pct + "%";
+          prog.setAttribute("aria-valuenow", String(d.pct));
+
+          // Remaining label
+          if(d.remaining > 1) remaining.textContent = `${d.remaining} days left`;
+          else if(d.remaining === 1) remaining.textContent = `1 day left`;
+          else if(d.remaining === 0) remaining.textContent = `Due today`;
+          else remaining.innerHTML = `<span class="overdue">Overdue by ${Math.abs(d.remaining)} day${Math.abs(d.remaining)===1?"":"s"}</span>`;
+
+          // Emoji mood / preset
+          emoji.textContent = p.emoji || "🌿";
+          emoji.style.transform = `rotate(${d.moodTilt}deg)`;
+          emoji.style.filter = `grayscale(${d.moodGray})`;
+          emoji.style.opacity = d.moodOpacity;
+
+          // Actions
+          $(".waterBtn", node).addEventListener("click", ()=>{
+            markWatered(p.id, 0);
+          });
+          $(".minus1Btn", node).addEventListener("click", ()=>{
+            markWatered(p.id, 1); // pretend watered yesterday
+          });
+          $(".delBtn", node).addEventListener("click", ()=>{
+            if(confirm(`Delete "${p.name}"?`)){
+              plants = plants.filter(x=>x.id!==p.id); savePlants(plants); render();
+            }
+          });
+
+          listEl.appendChild(node);
+        });
+    }
+
+    function markWatered(id, backDays){
+      const now = todayLocalDateOnly();
+      const wateredDate = addDays(now, -Math.max(0, backDays));
+      plants = plants.map(p => p.id===id ? {...p, lastWatered: wateredDate.toISOString()} : p);
+      savePlants(plants); render();
+    }
+
+    // Add form
+    $("#addForm").addEventListener("submit", (e)=>{
+      e.preventDefault();
+      const name = nameInput.value.trim();
+      const preset = PLANT_PRESETS[plantType.value] || PLANT_PRESETS[0];
+      const frequency = Math.max(1, parseInt(freqInput.value,10) || preset.days);
+      const emoji = preset.emoji || "🌿";
+
+      let last;
+      const today = todayLocalDateOnly();
+      if(startToday.checked || !lastWateredInput.value){
+        last = today;
+      } else {
+        const [y,m,d] = lastWateredInput.value.split("-").map(Number);
+        last = new Date(y, m-1, d);
+      }
+
+      const plant = {
+        id: uid(),
+        name: name || preset.label,
+        type: preset.label,
+        frequency,
+        emoji,
+        lastWatered: last.toISOString()
+      };
+
+      plants.push(plant);
+      savePlants(plants);
+      // reset quick fields (keep type & freq for faster adding)
+      nameInput.value = "";
+      lastWateredInput.value = "";
+      render();
+    });
+
+    // Import / Export
+    importToggle.addEventListener("change", ()=>{
+      importWrap.style.display = importToggle.checked ? "grid" : "none";
+    });
+    importBtn.addEventListener("click", ()=>{
+      try{
+        const arr = JSON.parse(importJson.value);
+        if(!Array.isArray(arr)) throw new Error("Invalid JSON");
+        // Basic sanitize
+        const sanitized = arr.map(x => ({
+          id: x.id || uid(),
+          name: String(x.name || "Plant"),
+          type: String(x.type || "Custom"),
+          frequency: Math.max(1, parseInt(x.frequency,10) || 7),
+          emoji: String(x.emoji || "🌿"),
+          lastWatered: new Date(x.lastWatered || todayLocalDateOnly()).toISOString()
+        }));
+        plants = sanitized; savePlants(plants); render();
+        alert("Imported successfully.");
+      }catch(err){
+        alert("Import failed. Make sure it's valid JSON array.");
+      }
+    });
+
+    exportBtn.addEventListener("click", ()=>{
+      const data = JSON.stringify(plants, null, 2);
+      const blob = new Blob([data], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "plant-water-reminder-backup.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Init
+    initPresets();
+    render();
+
+    // Subtle daily ticker: update remaining/progress if page stays open across midnight
+    setInterval(()=>{
+      // if date changed, re-render
+      render();
+    }, 60*60*1000); // hourly
+  </script>
+</body>
+</html>
