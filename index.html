@@ -16,6 +16,7 @@
       --danger:#fb7185;
       --ok:#86efac;
       --ring: rgba(255,255,255,0.1);
+      --warning: #fde047;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -28,7 +29,7 @@
       -moz-osx-font-smoothing:grayscale;
     }
     .container{
-      max-width:960px;
+      max-width:1200px;
       margin:0 auto;
       padding:24px;
     }
@@ -88,6 +89,9 @@
     @media (min-width:700px){
       .list{grid-template-columns: 1fr 1fr}
     }
+    @media (min-width:1000px){
+      .list{grid-template-columns: 1fr 1fr 1fr}
+    }
     .plant-card{
       display:flex; flex-direction:column; gap:12px;
     }
@@ -123,22 +127,125 @@
     }
     .danger{ color:#ffd6db; border-color:rgba(251,113,133,.35) }
     .overdue{ color:var(--danger) }
+    .warning{ color:var(--warning) }
     footer{
       margin:28px 0 12px; color:var(--muted); font-size:12px; text-align:center;
     }
     .small{font-size:12px; color:var(--muted)}
     .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+    
+    /* Stats section */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      text-align: center;
+      padding: 16px;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .stat-label {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    
+    /* Plant library */
+    .library-section {
+      margin-top: 32px;
+    }
+    .library-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .library-item {
+      background: var(--card);
+      border: 1px solid var(--ring);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .library-item:hover {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+    }
+    .library-emoji {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    .library-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .library-days {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+      .stats {
+        grid-template-columns: 1fr 1fr;
+      }
+      .list {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .stats {
+        grid-template-columns: 1fr;
+      }
+      .actions {
+        flex-direction: column;
+      }
+      .actions button {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <div>
-        <h1>Plant Care • Watering Reminder</h1>
+        <h1>🌿 Plant Care • Watering Reminder</h1>
         <div class="sub">Add your plants, set watering frequency, and track the next watering day. All data is stored locally in your browser.</div>
       </div>
       <button id="exportBtn" class="ghost" title="Backup your plants JSON">Export</button>
     </header>
+
+    <!-- Stats Section -->
+    <section class="stats">
+      <div class="stat-card card">
+        <div class="stat-value" id="totalPlants">0</div>
+        <div class="stat-label">Total Plants</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-value" id="dueToday">0</div>
+        <div class="stat-label">Due Today</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-value" id="overduePlants">0</div>
+        <div class="stat-label">Overdue</div>
+      </div>
+      <div class="stat-card card">
+        <div class="stat-value" id="wellWatered">0</div>
+        <div class="stat-label">Well Watered</div>
+      </div>
+    </section>
 
     <!-- Add Plant -->
     <section class="card">
@@ -184,8 +291,17 @@
       </form>
     </section>
 
+    <!-- Popular Plants Library -->
+    <section class="library-section">
+      <h2>Popular Indoor Plants</h2>
+      <div class="library-grid" id="plantLibrary">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
     <!-- List -->
-    <section style="margin-top:16px">
+    <section style="margin-top:32px">
+      <h2>Your Plants</h2>
       <div class="list" id="plantList"></div>
       <div id="emptyState" class="card" style="margin-top:12px; display:none">
         <strong>No plants yet.</strong>
@@ -235,16 +351,32 @@
   </template>
 
   <script>
-    // --- Starter plant library (can extend anytime)
+    // --- Extended plant library with 20+ popular indoor plants
     const PLANT_PRESETS = [
       { label: "Snake Plant (Sansevieria)", days: 14, emoji: "🪴" },
-      { label: "Monstera", days: 7, emoji: "🌿" },
+      { label: "Monstera Deliciosa", days: 7, emoji: "🌿" },
       { label: "Pothos (Epipremnum)", days: 7, emoji: "🌱" },
       { label: "ZZ Plant (Zamioculcas)", days: 14, emoji: "🌵" },
       { label: "Succulent (Generic)", days: 21, emoji: "🌵" },
       { label: "Peace Lily (Spathiphyllum)", days: 6, emoji: "🌼" },
-      { label: "Aloe", days: 18, emoji: "🌵" },
+      { label: "Aloe Vera", days: 18, emoji: "🌵" },
       { label: "Fiddle Leaf Fig", days: 7, emoji: "🍃" },
+      { label: "Rubber Plant", days: 10, emoji: "🌳" },
+      { label: "Spider Plant", days: 7, emoji: "🌱" },
+      { label: "Philodendron", days: 7, emoji: "🌿" },
+      { label: "Bird of Paradise", days: 10, emoji: "🌺" },
+      { label: "Dracaena", days: 14, emoji: "🌴" },
+      { label: "Chinese Evergreen", days: 10, emoji: "🎋" },
+      { label: "Calathea", days: 5, emoji: "🌺" },
+      { label: "Fern", days: 4, emoji: "🌿" },
+      { label: "Orchid", days: 10, emoji: "🌸" },
+      { label: "Money Tree", days: 10, emoji: "🌳" },
+      { label: "String of Pearls", days: 14, emoji: "🌱" },
+      { label: "Lavender", days: 8, emoji: "🪻" },
+      { label: "Jade Plant", days: 14, emoji: "🌱" },
+      { label: "Boston Fern", days: 4, emoji: "🌿" },
+      { label: "Croton", days: 7, emoji: "🌺" },
+      { label: "Umbrella Plant", days: 10, emoji: "🌿" }
     ];
 
     // --- Storage helpers
@@ -292,6 +424,7 @@
     const importJson = $("#importJson");
     const importBtn = $("#importBtn");
     const exportBtn = $("#exportBtn");
+    const plantLibrary = $("#plantLibrary");
 
     // Populate preset select
     function initPresets(){
@@ -303,11 +436,36 @@
       });
       plantType.addEventListener("change", ()=>{
         const p = PLANT_PRESETS[plantType.value];
-        if(p){ freqInput.value = p.days; if(!nameInput.value) nameInput.value = p.label; }
+        if(p){ 
+          freqInput.value = p.days; 
+          if(!nameInput.value) nameInput.value = p.label; 
+        }
       });
       // seed defaults
       plantType.value = 1; // Monstera
       plantType.dispatchEvent(new Event("change"));
+    }
+
+    // Render plant library
+    function renderPlantLibrary() {
+      plantLibrary.innerHTML = "";
+      PLANT_PRESETS.forEach((plant, index) => {
+        const item = document.createElement("div");
+        item.className = "library-item";
+        item.innerHTML = `
+          <div class="library-emoji">${plant.emoji}</div>
+          <div class="library-name">${plant.label}</div>
+          <div class="library-days">Water every ${plant.days} days</div>
+        `;
+        item.addEventListener("click", () => {
+          plantType.value = index;
+          plantType.dispatchEvent(new Event("change"));
+          nameInput.value = plant.label;
+          freqInput.value = plant.days;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        plantLibrary.appendChild(item);
+      });
     }
 
     // Render plant cards
@@ -349,8 +507,14 @@
 
     function render(){
       listEl.innerHTML = "";
-      if(plants.length === 0){ emptyState.style.display="block"; return; }
-      emptyState.style.display="none";
+      if(plants.length === 0){ 
+        emptyState.style.display="block"; 
+      } else {
+        emptyState.style.display="none";
+      }
+
+      // Update stats
+      updateStats();
 
       plants
         .slice()
@@ -408,6 +572,25 @@
 
           listEl.appendChild(node);
         });
+    }
+
+    function updateStats() {
+      const totalPlants = plants.length;
+      let dueToday = 0;
+      let overduePlants = 0;
+      let wellWatered = 0;
+      
+      plants.forEach(p => {
+        const d = computeDerived(p);
+        if (d.remaining === 0) dueToday++;
+        if (d.remaining < 0) overduePlants++;
+        if (d.pct < 30) wellWatered++;
+      });
+      
+      $("#totalPlants").textContent = totalPlants;
+      $("#dueToday").textContent = dueToday;
+      $("#overduePlants").textContent = overduePlants;
+      $("#wellWatered").textContent = wellWatered;
     }
 
     function markWatered(id, backDays){
@@ -489,6 +672,7 @@
 
     // Init
     initPresets();
+    renderPlantLibrary();
     render();
 
     // Subtle daily ticker: update remaining/progress if page stays open across midnight
