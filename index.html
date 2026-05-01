@@ -1,685 +1,919 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Plant Care • Watering Reminder</title>
-  <meta name="description" content="Minimal plant care watering reminder with local storage. Add your plants, track watering frequency, and get simple countdowns." />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BestOne Water Delivery – Book Your Tank</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <style>
-    :root{
-      --bg:#0b0c10;
-      --card:#111318;
-      --muted:#9aa3af;
-      --txt:#e5e7eb;
-      --accent:#6ee7b7;
-      --accent-2:#22d3ee;
-      --danger:#fb7185;
-      --ok:#86efac;
-      --ring: rgba(255,255,255,0.1);
-      --warning: #fde047;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue-deep:   #0a2540;
+      --blue-mid:    #1a4a7a;
+      --blue-light:  #2d7dd2;
+      --blue-pale:   #e8f4fd;
+      --accent:      #00c9a7;
+      --accent-dark: #009e84;
+      --warn:        #f0a500;
+      --white:       #ffffff;
+      --text-body:   #3a3a4c;
+      --text-muted:  #7a8099;
+      --card-bg:     #ffffff;
+      --border:      #d6e4f0;
+      --error:       #e53935;
+      --radius-sm:   8px;
+      --radius-md:   16px;
+      --radius-lg:   24px;
+      --shadow-card: 0 4px 32px rgba(10,37,64,0.10);
+      --shadow-btn:  0 4px 20px rgba(0,201,167,0.35);
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
-      background: radial-gradient(1200px 600px at 80% -10%, #18202b 0%, #0b0c10 60%) no-repeat fixed;
-      color:var(--txt);
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--blue-deep);
+      color: var(--text-body);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    .container{
-      max-width:1200px;
-      margin:0 auto;
-      padding:24px;
+
+    /* ─── BACKGROUND DECORATION ─── */
+    .bg-decor {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      overflow: hidden;
     }
-    header{
-      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
-      margin-bottom:18px;
+    .bg-decor::before {
+      content: '';
+      position: absolute;
+      top: -30%; left: -20%;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(45,125,210,0.18) 0%, transparent 70%);
+      border-radius: 50%;
     }
-    h1{font-size:clamp(20px,3vw,28px); margin:0; letter-spacing:.2px}
-    .sub{color:var(--muted); font-size:14px}
-    .card{
-      background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.00));
-      border:1px solid var(--ring);
-      border-radius:16px;
-      padding:16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    .bg-decor::after {
+      content: '';
+      position: absolute;
+      bottom: -20%; right: -15%;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(0,201,167,0.12) 0%, transparent 70%);
+      border-radius: 50%;
     }
-    .add-form{
-      display:grid; gap:12px;
-      grid-template-columns: 1fr;
-      margin-bottom:18px;
+    .wave-decor {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 160px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.15;
     }
-    .row{
-      display:grid; gap:12px;
-      grid-template-columns: 1fr;
+
+    /* ─── LAYOUT ─── */
+    .page-wrap {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
     }
-    @media (min-width:640px){
-      .add-form{grid-template-columns: 1.1fr 1fr .9fr auto}
-      .row{grid-template-columns: 1fr 1fr}
-    }
-    label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
-    input, select, button{
-      width:100%;
-      border-radius:12px;
-      border:1px solid var(--ring);
-      background:#0f1116;
-      color:var(--txt);
-      padding:12px 14px;
-      outline:none;
-      transition: box-shadow .18s ease, transform .05s ease;
-    }
-    input:focus, select:focus{
-      box-shadow:0 0 0 3px rgba(110,231,183,.15);
-      border-color: rgba(110,231,183,.45);
-    }
-    button{
-      cursor:pointer; border:none; background:linear-gradient(90deg,var(--accent),var(--accent-2));
-      color:#06201a; font-weight:700;
-    }
-    button:active{ transform: translateY(1px) }
-    .ghost{
-      background:transparent; border:1px solid var(--ring); color:var(--txt);
-    }
-    .list{
-      display:grid; gap:12px;
-      grid-template-columns: 1fr;
-    }
-    @media (min-width:700px){
-      .list{grid-template-columns: 1fr 1fr}
-    }
-    @media (min-width:1000px){
-      .list{grid-template-columns: 1fr 1fr 1fr}
-    }
-    .plant-card{
-      display:flex; flex-direction:column; gap:12px;
-    }
-    .plant-top{
-      display:flex; gap:12px; align-items:center; justify-content:space-between;
-    }
-    .plant-meta{
-      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
-      color:var(--muted); font-size:13px;
-    }
-    .badge{
-      padding:4px 8px; border-radius:999px; border:1px solid var(--ring); background:#0f1116; color:var(--txt);
-    }
-    .emoji{
-      font-size:28px; line-height:1;
-      transition: transform .3s ease, filter .3s ease, opacity .3s ease;
-    }
-    .progress{
-      height:10px; background:#0f1116; border-radius:999px; border:1px solid var(--ring);
-      overflow:hidden;
-    }
-    .bar{
-      height:100%;
-      width:0%;
-      background:linear-gradient(90deg,var(--ok),var(--accent-2));
-      transition: width .4s ease;
-    }
-    .statline{
-      display:flex; justify-content:space-between; font-size:13px; color:var(--muted);
-    }
-    .actions{
-      display:flex; gap:8px; flex-wrap:wrap;
-    }
-    .danger{ color:#ffd6db; border-color:rgba(251,113,133,.35) }
-    .overdue{ color:var(--danger) }
-    .warning{ color:var(--warning) }
-    footer{
-      margin:28px 0 12px; color:var(--muted); font-size:12px; text-align:center;
-    }
-    .small{font-size:12px; color:var(--muted)}
-    .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
-    
-    /* Stats section */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .stat-card {
+
+    /* ─── HEADER ─── */
+    header {
       text-align: center;
-      padding: 16px;
+      margin-bottom: 40px;
+      animation: fadeDown 0.7s ease both;
     }
-    .stat-value {
-      font-size: 24px;
-      font-weight: bold;
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      padding: 8px 20px 8px 12px;
+      margin-bottom: 20px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 0.5px;
+    }
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      color: var(--white);
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+    h1 em {
+      font-style: italic;
       color: var(--accent);
     }
-    .stat-label {
-      font-size: 14px;
-      color: var(--muted);
+    .tagline {
+      font-size: 15px;
+      color: rgba(255,255,255,0.55);
+      font-weight: 300;
+      letter-spacing: 0.3px;
     }
-    
-    /* Plant library */
-    .library-section {
-      margin-top: 32px;
+
+    /* ─── CARD ─── */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 560px;
+      animation: fadeUp 0.8s ease 0.15s both;
     }
-    .library-grid {
+
+    /* ─── SECTION LABELS ─── */
+    .field-group { margin-bottom: 28px; }
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px; height: 20px;
+      background: var(--blue-deep);
+      color: white;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* ─── TEXT INPUT ─── */
+    .input-wrap {
+      position: relative;
+    }
+    .input-prefix {
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    input[type="text"], input[type="tel"] {
+      width: 100%;
+      padding: 14px 16px 14px 44px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--text-body);
+      background: #f8fbff;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus, input[type="tel"]:focus {
+      border-color: var(--blue-light);
+      box-shadow: 0 0 0 3px rgba(45,125,210,0.12);
+      background: white;
+    }
+    input.error-field { border-color: var(--error) !important; }
+
+    /* ─── TANK CARDS ─── */
+    .tank-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 16px;
-      margin-top: 16px;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
-    .library-item {
-      background: var(--card);
-      border: 1px solid var(--ring);
-      border-radius: 12px;
-      padding: 16px;
+    .tank-card {
+      position: relative;
+      cursor: pointer;
+    }
+    .tank-card input[type="radio"] {
+      position: absolute; opacity: 0; width: 0; height: 0;
+    }
+    .tank-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 16px 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      background: #f8fbff;
+      transition: all 0.2s;
       text-align: center;
       cursor: pointer;
-      transition: transform 0.2s ease;
     }
-    .library-item:hover {
-      transform: translateY(-3px);
-      border-color: var(--accent);
+    .tank-card input:checked + .tank-label {
+      border-color: var(--blue-light);
+      background: var(--blue-pale);
+      box-shadow: 0 0 0 3px rgba(45,125,210,0.12);
     }
-    .library-emoji {
-      font-size: 32px;
+    .tank-label:hover {
+      border-color: var(--blue-light);
+      background: var(--blue-pale);
+    }
+    .tank-vol {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: var(--blue-deep);
+      line-height: 1;
+    }
+    .tank-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    .tank-price {
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-dark);
+      background: rgba(0,201,167,0.1);
+      border-radius: 100px;
+      padding: 2px 10px;
+    }
+    .best-value-badge {
+      position: absolute;
+      top: -8px; right: -4px;
+      background: var(--warn);
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-radius: 100px;
+      padding: 2px 8px;
+    }
+
+    /* ─── LOCATION SECTION ─── */
+    .location-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #f8fbff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      border-color: var(--blue-light);
+      background: var(--blue-pale);
+      color: var(--blue-deep);
+    }
+    .location-panel { display: none; }
+    .location-panel.active { display: block; }
+
+    .location-input-wrap { position: relative; }
+    .location-input-wrap input {
+      padding-left: 44px;
+    }
+
+    .gps-btn {
+      width: 100%;
+      padding: 14px 20px;
+      border: 2px dashed var(--blue-light);
+      border-radius: var(--radius-sm);
+      background: var(--blue-pale);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue-mid);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+    .gps-btn:hover {
+      background: #d0e9f8;
+      border-color: var(--blue-mid);
+    }
+    .gps-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .gps-spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(26,74,122,0.3);
+      border-top-color: var(--blue-mid);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    .location-confirmed {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: rgba(0,201,167,0.08);
+      border: 1.5px solid rgba(0,201,167,0.3);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--accent-dark);
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .location-confirmed.show { display: flex; }
+    .location-confirmed a {
+      color: var(--blue-light);
+      font-weight: 600;
+      word-break: break-all;
+      font-size: 12px;
+    }
+
+    .map-preview {
+      margin-top: 12px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      display: none;
+    }
+    .map-preview.show { display: block; }
+    .map-preview iframe {
+      width: 100%;
+      height: 180px;
+      border: none;
+      display: block;
+    }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 28px 0;
+    }
+
+    /* ─── ERROR MESSAGES ─── */
+    .field-error {
+      font-size: 12px;
+      color: var(--error);
+      margin-top: 6px;
+      display: none;
+    }
+    .field-error.show { display: block; }
+
+    /* ─── SUBMIT BUTTON ─── */
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent) 0%, #00a88d 100%);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: var(--shadow-btn);
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,201,167,0.45);
+    }
+    .submit-btn:active { transform: translateY(0); }
+    .submit-btn:disabled {
+      background: #b0bec5;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .submit-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    /* ─── SUCCESS MODAL ─── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,37,64,0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal-overlay.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal-box {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: 40px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.3s;
+    }
+    .modal-overlay.show .modal-box { transform: scale(1); }
+
+    .success-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #00a88d);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 36px;
+      box-shadow: 0 8px 24px rgba(0,201,167,0.3);
+      animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+    .modal-box h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      color: var(--blue-deep);
+      margin-bottom: 12px;
+    }
+    .modal-box p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
       margin-bottom: 8px;
     }
-    .library-name {
+    .modal-box .phone-highlight {
+      font-weight: 700;
+      color: var(--blue-deep);
+    }
+    .modal-summary {
+      margin: 20px 0;
+      padding: 16px;
+      background: var(--blue-pale);
+      border-radius: var(--radius-sm);
+      text-align: left;
+      font-size: 13px;
+      color: var(--text-body);
+      line-height: 1.8;
+    }
+    .modal-summary strong { color: var(--blue-deep); }
+    .modal-close {
+      width: 100%;
+      padding: 14px;
+      background: var(--blue-deep);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
       font-weight: 600;
-      margin-bottom: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
     }
-    .library-days {
+    .modal-close:hover { background: var(--blue-mid); }
+
+    /* ─── FOOTER ─── */
+    footer {
+      margin-top: 32px;
+      text-align: center;
+      color: rgba(255,255,255,0.3);
       font-size: 12px;
-      color: var(--muted);
+      animation: fadeUp 1s ease 0.4s both;
     }
-    
-    /* Responsive improvements */
-    @media (max-width: 768px) {
-      .container {
-        padding: 16px;
-      }
-      .stats {
-        grid-template-columns: 1fr 1fr;
-      }
-      .list {
-        grid-template-columns: 1fr;
-      }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
-    
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ─── RESPONSIVE ─── */
     @media (max-width: 480px) {
-      .stats {
-        grid-template-columns: 1fr;
-      }
-      .actions {
-        flex-direction: column;
-      }
-      .actions button {
-        width: 100%;
-      }
+      .card { padding: 24px 18px; }
+      .tank-grid { gap: 8px; }
+      .tank-vol { font-size: 18px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
+
+  <div class="bg-decor"></div>
+  <svg class="wave-decor" viewBox="0 0 1440 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <path fill="white" d="M0,96L60,90.7C120,85,240,75,360,85.3C480,96,600,128,720,128C840,128,960,96,1080,80C1200,64,1320,64,1380,64L1440,64L1440,160L1380,160C1320,160,1200,160,1080,160C960,160,840,160,720,160C600,160,480,160,360,160C240,160,120,160,60,160L0,160Z"/>
+  </svg>
+
+  <div class="page-wrap">
     <header>
-      <div>
-        <h1>🌿 Plant Care • Watering Reminder</h1>
-        <div class="sub">Add your plants, set watering frequency, and track the next watering day. All data is stored locally in your browser.</div>
+      <div class="logo-badge">
+        <div class="logo-icon">💧</div>
+        <span class="logo-text">BestOne Agency</span>
       </div>
-      <button id="exportBtn" class="ghost" title="Backup your plants JSON">Export</button>
+      <h1>Pure Water,<br /><em>Delivered Fast.</em></h1>
+      <p class="tagline">Book your borehole water tank — we'll call you in 5 minutes.</p>
     </header>
 
-    <!-- Stats Section -->
-    <section class="stats">
-      <div class="stat-card card">
-        <div class="stat-value" id="totalPlants">0</div>
-        <div class="stat-label">Total Plants</div>
-      </div>
-      <div class="stat-card card">
-        <div class="stat-value" id="dueToday">0</div>
-        <div class="stat-label">Due Today</div>
-      </div>
-      <div class="stat-card card">
-        <div class="stat-value" id="overduePlants">0</div>
-        <div class="stat-label">Overdue</div>
-      </div>
-      <div class="stat-card card">
-        <div class="stat-value" id="wellWatered">0</div>
-        <div class="stat-label">Well Watered</div>
-      </div>
-    </section>
+    <div class="card">
 
-    <!-- Add Plant -->
-    <section class="card">
-      <form id="addForm" class="add-form" autocomplete="off">
-        <div>
-          <label for="plantName">Plant name</label>
-          <input id="plantName" name="plantName" placeholder="e.g., Monstera, Pothos" required />
+      <!-- STEP 1: Phone -->
+      <div class="field-group">
+        <label class="field-label"><span class="step-num">1</span> Your Contact Number</label>
+        <div class="input-wrap">
+          <span class="input-prefix">📞</span>
+          <input type="tel" id="phone" placeholder="98XXXXXXXX" autocomplete="tel" />
         </div>
-        <div>
-          <label for="plantType">Select type (prefills frequency)</label>
-          <select id="plantType" name="plantType">
-            <!-- Populated by JS -->
-          </select>
-        </div>
-        <div>
-          <label for="frequency">Watering frequency (days)</label>
-          <input id="frequency" name="frequency" type="number" min="1" step="1" value="7" required />
-        </div>
-        <div>
-          <label for="lastWatered">Last watered</label>
-          <input id="lastWatered" name="lastWatered" type="date" />
-        </div>
-        <div style="grid-column: 1/-1; display:flex; gap:12px; flex-wrap:wrap">
-          <button type="submit">Add Plant</button>
-          <label class="small" style="display:flex;align-items:center;gap:8px">
-            <input id="startToday" type="checkbox" checked />
-            Start countdown from today (ignore last watered)
+        <div class="field-error" id="phone-error">Please enter your phone number.</div>
+      </div>
+
+      <!-- STEP 2: Tank Selection -->
+      <div class="field-group">
+        <label class="field-label"><span class="step-num">2</span> Select Tank Capacity</label>
+        <div class="tank-grid">
+
+          <label class="tank-card">
+            <input type="radio" name="tank" value="5000" data-price="1050" />
+            <div class="tank-label">
+              <span class="tank-vol">5,000</span>
+              <span class="tank-unit">Litres</span>
+              <span class="tank-price">Rs. 1,050</span>
+            </div>
           </label>
-          <label class="small" style="display:flex;align-items:center;gap:8px">
-            <input id="importToggle" type="checkbox" />
-            Import JSON
+
+          <label class="tank-card">
+            <input type="radio" name="tank" value="6000" data-price="1050" />
+            <div class="tank-label">
+              <span class="best-value-badge">Best Value</span>
+              <span class="tank-vol">6,000</span>
+              <span class="tank-unit">Litres</span>
+              <span class="tank-price">Rs. 1,050</span>
+            </div>
           </label>
-        </div>
-        <div id="importWrap" class="row" style="display:none">
-          <div>
-            <label for="importJson">Paste JSON (backup)</label>
-            <input id="importJson" placeholder='[{"id":"...","name":"Snake Plant",...}]' />
-          </div>
-          <div style="align-self:end">
-            <button type="button" id="importBtn" class="ghost">Import</button>
-          </div>
-        </div>
-      </form>
-    </section>
 
-    <!-- Popular Plants Library -->
-    <section class="library-section">
-      <h2>Popular Indoor Plants</h2>
-      <div class="library-grid" id="plantLibrary">
-        <!-- Populated by JS -->
-      </div>
-    </section>
+          <label class="tank-card">
+            <input type="radio" name="tank" value="7000" data-price="1350" />
+            <div class="tank-label">
+              <span class="tank-vol">7,000</span>
+              <span class="tank-unit">Litres</span>
+              <span class="tank-price">Rs. 1,350</span>
+            </div>
+          </label>
 
-    <!-- List -->
-    <section style="margin-top:32px">
-      <h2>Your Plants</h2>
-      <div class="list" id="plantList"></div>
-      <div id="emptyState" class="card" style="margin-top:12px; display:none">
-        <strong>No plants yet.</strong>
-        <div class="small" style="margin-top:6px">Add a plant above to start tracking. Everything works offline after first load.</div>
+          <label class="tank-card">
+            <input type="radio" name="tank" value="8000" data-price="1350" />
+            <div class="tank-label">
+              <span class="best-value-badge">Best Value</span>
+              <span class="tank-vol">8,000</span>
+              <span class="tank-unit">Litres</span>
+              <span class="tank-price">Rs. 1,350</span>
+            </div>
+          </label>
+
+        </div>
+        <div class="field-error" id="tank-error">Please select a tank capacity.</div>
       </div>
-    </section>
+
+      <!-- STEP 3: Location -->
+      <div class="field-group">
+        <label class="field-label"><span class="step-num">3</span> Your Delivery Location</label>
+
+        <div class="location-tabs">
+          <button class="tab-btn active" id="tab-link" onclick="switchTab('link')">🔗 Paste Map Link</button>
+          <button class="tab-btn" id="tab-gps" onclick="switchTab('gps')">📍 Use My Location</button>
+        </div>
+
+        <!-- Panel: Paste Link -->
+        <div class="location-panel active" id="panel-link">
+          <div class="location-input-wrap input-wrap">
+            <span class="input-prefix">🗺️</span>
+            <input type="text" id="map-link" placeholder="https://maps.google.com/..." />
+          </div>
+        </div>
+
+        <!-- Panel: GPS -->
+        <div class="location-panel" id="panel-gps">
+          <button class="gps-btn" id="gps-btn" onclick="getLocation()">
+            <span id="gps-icon">📍</span>
+            <span id="gps-spinner" class="gps-spinner"></span>
+            <span id="gps-text">Share My Current Location</span>
+          </button>
+          <div class="location-confirmed" id="location-confirmed">
+            <span>✅</span>
+            <div>
+              <div style="font-weight:600;margin-bottom:2px;">Location detected!</div>
+              <a id="location-link-display" href="#" target="_blank"></a>
+            </div>
+          </div>
+          <div class="map-preview" id="map-preview">
+            <iframe id="map-iframe" src="" title="Your location preview"></iframe>
+          </div>
+        </div>
+
+        <div class="field-error" id="location-error">Please provide your delivery location.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- SUBMIT -->
+      <button class="submit-btn" id="submit-btn" onclick="handleSubmit()">
+        <span id="submit-text">Book Now →</span>
+        <span id="submit-spinner" class="submit-spinner"></span>
+      </button>
+
+    </div><!-- /.card -->
 
     <footer>
-      Built as a static page. Your data never leaves this device.
+      &copy; 2025 BestOne Agency · Borehole Water Delivery · Nepal
     </footer>
   </div>
 
-  <template id="plantCardTpl">
-    <div class="card plant-card" data-id="">
-      <div class="plant-top">
-        <div style="display:flex; gap:10px; align-items:center">
-          <div class="emoji" aria-hidden="true">🌿</div>
-          <div>
-            <div style="font-weight:700" class="title"></div>
-            <div class="plant-meta">
-              <span class="badge type"></span>
-              <span class="badge freq"></span>
-            </div>
-          </div>
-        </div>
-        <button class="ghost danger delBtn" title="Delete plant">Delete</button>
-      </div>
-
-      <div class="statline">
-        <div>Next: <span class="next"></span></div>
-        <div class="remaining"></div>
-      </div>
-      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Watering progress">
-        <div class="bar"></div>
-      </div>
-
-      <div class="statline">
-        <div>Last watered: <span class="last"></span></div>
-        <div>Due every <span class="freq2"></span> days</div>
-      </div>
-
-      <div class="actions">
-        <button class="waterBtn">I watered it</button>
-        <button class="ghost minus1Btn" title="Mark as watered yesterday">Watered yesterday</button>
-      </div>
+  <!-- SUCCESS MODAL -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <div class="success-ring">✓</div>
+      <h2>Booking Confirmed!</h2>
+      <p>You will receive a call within <strong>5 minutes</strong> on <span class="phone-highlight" id="modal-phone"></span></p>
+      <div class="modal-summary" id="modal-summary"></div>
+      <button class="modal-close" onclick="closeModal()">Done</button>
     </div>
-  </template>
+  </div>
 
   <script>
-    // --- Extended plant library with 20+ popular indoor plants
-    const PLANT_PRESETS = [
-      { label: "Snake Plant (Sansevieria)", days: 14, emoji: "🪴" },
-      { label: "Monstera Deliciosa", days: 7, emoji: "🌿" },
-      { label: "Pothos (Epipremnum)", days: 7, emoji: "🌱" },
-      { label: "ZZ Plant (Zamioculcas)", days: 14, emoji: "🌵" },
-      { label: "Succulent (Generic)", days: 21, emoji: "🌵" },
-      { label: "Peace Lily (Spathiphyllum)", days: 6, emoji: "🌼" },
-      { label: "Aloe Vera", days: 18, emoji: "🌵" },
-      { label: "Fiddle Leaf Fig", days: 7, emoji: "🍃" },
-      { label: "Rubber Plant", days: 10, emoji: "🌳" },
-      { label: "Spider Plant", days: 7, emoji: "🌱" },
-      { label: "Philodendron", days: 7, emoji: "🌿" },
-      { label: "Bird of Paradise", days: 10, emoji: "🌺" },
-      { label: "Dracaena", days: 14, emoji: "🌴" },
-      { label: "Chinese Evergreen", days: 10, emoji: "🎋" },
-      { label: "Calathea", days: 5, emoji: "🌺" },
-      { label: "Fern", days: 4, emoji: "🌿" },
-      { label: "Orchid", days: 10, emoji: "🌸" },
-      { label: "Money Tree", days: 10, emoji: "🌳" },
-      { label: "String of Pearls", days: 14, emoji: "🌱" },
-      { label: "Lavender", days: 8, emoji: "🪻" },
-      { label: "Jade Plant", days: 14, emoji: "🌱" },
-      { label: "Boston Fern", days: 4, emoji: "🌿" },
-      { label: "Croton", days: 7, emoji: "🌺" },
-      { label: "Umbrella Plant", days: 10, emoji: "🌿" }
-    ];
+    // ═══════════════════════════════════════════════
+    // EMAILJS CONFIG — Replace with your credentials
+    // Get them free at: https://www.emailjs.com
+    // ═══════════════════════════════════════════════
+    const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';
+    const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
+    const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
 
-    // --- Storage helpers
-    const KEY = "pcwr.v1.plants";
-    const $ = (s, el=document) => el.querySelector(s);
-    const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+    emailjs.init(EMAILJS_PUBLIC_KEY);
 
-    function loadPlants(){
-      try{
-        const raw = localStorage.getItem(KEY);
-        return raw ? JSON.parse(raw) : [];
-      }catch{ return []; }
-    }
-    function savePlants(list){ localStorage.setItem(KEY, JSON.stringify(list)); }
+    // ─── STATE ───
+    let activeTab       = 'link';
+    let detectedGeoUrl  = '';
 
-    function uid(){ return Math.random().toString(36).slice(2) + Date.now().toString(36); }
-
-    // --- Date utilities (respect local timezone)
-    const DAY = 24*60*60*1000;
-    const todayLocalDateOnly = () => {
-      const now = new Date();
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate()); // midnight local
-    };
-    function addDays(date, days){
-      const d = new Date(date.getTime());
-      d.setDate(d.getDate()+days);
-      return d;
-    }
-    function fmtDate(d){
-      return d ? d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }) : "—";
-    }
-    function daysBetween(a,b){ // whole days a->b
-      return Math.floor((b.getTime() - a.getTime()) / DAY);
+    // ─── TAB SWITCH ───
+    function switchTab(tab) {
+      activeTab = tab;
+      document.getElementById('tab-link').classList.toggle('active', tab === 'link');
+      document.getElementById('tab-gps').classList.toggle('active',  tab === 'gps');
+      document.getElementById('panel-link').classList.toggle('active', tab === 'link');
+      document.getElementById('panel-gps').classList.toggle('active',  tab === 'gps');
+      clearError('location-error');
     }
 
-    // --- State & UI
-    let plants = loadPlants();
-    const plantType = $("#plantType");
-    const freqInput = $("#frequency");
-    const nameInput = $("#plantName");
-    const lastWateredInput = $("#lastWatered");
-    const startToday = $("#startToday");
-    const importToggle = $("#importToggle");
-    const importWrap = $("#importWrap");
-    const importJson = $("#importJson");
-    const importBtn = $("#importBtn");
-    const exportBtn = $("#exportBtn");
-    const plantLibrary = $("#plantLibrary");
-
-    // Populate preset select
-    function initPresets(){
-      PLANT_PRESETS.forEach((p,i)=>{
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = `${p.label} • ${p.days}d`;
-        plantType.appendChild(opt);
-      });
-      plantType.addEventListener("change", ()=>{
-        const p = PLANT_PRESETS[plantType.value];
-        if(p){ 
-          freqInput.value = p.days; 
-          if(!nameInput.value) nameInput.value = p.label; 
-        }
-      });
-      // seed defaults
-      plantType.value = 1; // Monstera
-      plantType.dispatchEvent(new Event("change"));
-    }
-
-    // Render plant library
-    function renderPlantLibrary() {
-      plantLibrary.innerHTML = "";
-      PLANT_PRESETS.forEach((plant, index) => {
-        const item = document.createElement("div");
-        item.className = "library-item";
-        item.innerHTML = `
-          <div class="library-emoji">${plant.emoji}</div>
-          <div class="library-name">${plant.label}</div>
-          <div class="library-days">Water every ${plant.days} days</div>
-        `;
-        item.addEventListener("click", () => {
-          plantType.value = index;
-          plantType.dispatchEvent(new Event("change"));
-          nameInput.value = plant.label;
-          freqInput.value = plant.days;
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-        plantLibrary.appendChild(item);
-      });
-    }
-
-    // Render plant cards
-    const listEl = $("#plantList");
-    const tpl = $("#plantCardTpl");
-    const emptyState = $("#emptyState");
-
-    function computeDerived(p){
-      const last = new Date(p.lastWatered);
-      const next = addDays(last, p.frequency);
-      const t0 = last;
-      const t1 = next;
-      const now = todayLocalDateOnly();
-
-      const totalDays = Math.max(1, daysBetween(t0, t1)); // avoid /0
-      const elapsed = Math.max(0, Math.min(totalDays, daysBetween(t0, now)));
-      let pct = Math.round((elapsed / totalDays) * 100);
-      pct = Math.max(0, Math.min(100, pct));
-
-      const remaining = daysBetween(now, t1); // can be negative (overdue)
-
-      // Emoji mood (simple visual feedback)
-      // more overdue => more grayscale & tilt
-      let moodTilt = 0;
-      let moodGray = 0;
-      let moodOpacity = 1;
-      if(remaining < 0){
-        const over = Math.abs(remaining);
-        moodTilt = Math.min(12, 4 + over*2);
-        moodGray = Math.min(1, 0.2 + over*0.15);
-        moodOpacity = Math.max(0.65, 1 - over*0.08);
-      } else if (remaining <= 1){
-        moodTilt = 4;
-        moodGray = 0.2;
+    // ─── GEOLOCATION ───
+    function getLocation() {
+      if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser.');
+        return;
       }
+      const btn     = document.getElementById('gps-btn');
+      const icon    = document.getElementById('gps-icon');
+      const spinner = document.getElementById('gps-spinner');
+      const text    = document.getElementById('gps-text');
 
-      return { last, next, pct, remaining, moodTilt, moodGray, moodOpacity };
+      btn.disabled     = true;
+      icon.style.display    = 'none';
+      spinner.style.display = 'block';
+      text.textContent = 'Detecting location…';
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          // Format as Google Maps URL
+          detectedGeoUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+
+          // Show confirmation
+          const confirmed  = document.getElementById('location-confirmed');
+          const linkDisplay = document.getElementById('location-link-display');
+          confirmed.classList.add('show');
+          linkDisplay.href        = detectedGeoUrl;
+          linkDisplay.textContent = detectedGeoUrl;
+
+          // OpenStreetMap embed preview
+          const delta = 0.005;
+          const bbox  = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+          const mapIframe = document.getElementById('map-iframe');
+          mapIframe.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;
+          document.getElementById('map-preview').classList.add('show');
+
+          clearError('location-error');
+
+          // Reset button
+          btn.disabled          = false;
+          icon.style.display    = 'inline';
+          spinner.style.display = 'none';
+          text.textContent = '✅ Location Captured – Click to Refresh';
+        },
+        (err) => {
+          btn.disabled          = false;
+          icon.style.display    = 'inline';
+          spinner.style.display = 'none';
+          text.textContent = 'Share My Current Location';
+
+          const messages = {
+            1: 'Location access denied. Please allow location permission in your browser.',
+            2: 'Location unavailable. Try again.',
+            3: 'Location request timed out. Try again.'
+          };
+          alert(messages[err.code] || 'Could not get location.');
+        },
+        { timeout: 12000, enableHighAccuracy: true }
+      );
     }
 
-    function render(){
-      listEl.innerHTML = "";
-      if(plants.length === 0){ 
-        emptyState.style.display="block"; 
+    // ─── VALIDATION ───
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      if (msg) el.textContent = msg;
+      el.classList.add('show');
+    }
+    function clearError(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    function getLocationValue() {
+      if (activeTab === 'link') {
+        return document.getElementById('map-link').value.trim();
       } else {
-        emptyState.style.display="none";
+        return detectedGeoUrl;
       }
-
-      // Update stats
-      updateStats();
-
-      plants
-        .slice()
-        .sort((a,b)=> a.name.localeCompare(b.name))
-        .forEach(p=>{
-          const node = tpl.content.firstElementChild.cloneNode(true);
-          node.dataset.id = p.id;
-
-          const title = $(".title", node);
-          const type = $(".type", node);
-          const freq = $(".freq", node);
-          const freq2 = $(".freq2", node);
-          const next = $(".next", node);
-          const last = $(".last", node);
-          const bar = $(".bar", node);
-          const prog = $(".progress", node);
-          const remaining = $(".remaining", node);
-          const emoji = $(".emoji", node);
-
-          title.textContent = p.name;
-          type.textContent = p.type;
-          freq.textContent = `${p.frequency}d`;
-          freq2.textContent = p.frequency;
-
-          const d = computeDerived(p);
-          next.textContent = fmtDate(d.next);
-          last.textContent = fmtDate(d.last);
-          bar.style.width = d.pct + "%";
-          prog.setAttribute("aria-valuenow", String(d.pct));
-
-          // Remaining label
-          if(d.remaining > 1) remaining.textContent = `${d.remaining} days left`;
-          else if(d.remaining === 1) remaining.textContent = `1 day left`;
-          else if(d.remaining === 0) remaining.textContent = `Due today`;
-          else remaining.innerHTML = `<span class="overdue">Overdue by ${Math.abs(d.remaining)} day${Math.abs(d.remaining)===1?"":"s"}</span>`;
-
-          // Emoji mood / preset
-          emoji.textContent = p.emoji || "🌿";
-          emoji.style.transform = `rotate(${d.moodTilt}deg)`;
-          emoji.style.filter = `grayscale(${d.moodGray})`;
-          emoji.style.opacity = d.moodOpacity;
-
-          // Actions
-          $(".waterBtn", node).addEventListener("click", ()=>{
-            markWatered(p.id, 0);
-          });
-          $(".minus1Btn", node).addEventListener("click", ()=>{
-            markWatered(p.id, 1); // pretend watered yesterday
-          });
-          $(".delBtn", node).addEventListener("click", ()=>{
-            if(confirm(`Delete "${p.name}"?`)){
-              plants = plants.filter(x=>x.id!==p.id); savePlants(plants); render();
-            }
-          });
-
-          listEl.appendChild(node);
-        });
     }
 
-    function updateStats() {
-      const totalPlants = plants.length;
-      let dueToday = 0;
-      let overduePlants = 0;
-      let wellWatered = 0;
-      
-      plants.forEach(p => {
-        const d = computeDerived(p);
-        if (d.remaining === 0) dueToday++;
-        if (d.remaining < 0) overduePlants++;
-        if (d.pct < 30) wellWatered++;
-      });
-      
-      $("#totalPlants").textContent = totalPlants;
-      $("#dueToday").textContent = dueToday;
-      $("#overduePlants").textContent = overduePlants;
-      $("#wellWatered").textContent = wellWatered;
-    }
+    function validate() {
+      let valid = true;
 
-    function markWatered(id, backDays){
-      const now = todayLocalDateOnly();
-      const wateredDate = addDays(now, -Math.max(0, backDays));
-      plants = plants.map(p => p.id===id ? {...p, lastWatered: wateredDate.toISOString()} : p);
-      savePlants(plants); render();
-    }
-
-    // Add form
-    $("#addForm").addEventListener("submit", (e)=>{
-      e.preventDefault();
-      const name = nameInput.value.trim();
-      const preset = PLANT_PRESETS[plantType.value] || PLANT_PRESETS[0];
-      const frequency = Math.max(1, parseInt(freqInput.value,10) || preset.days);
-      const emoji = preset.emoji || "🌿";
-
-      let last;
-      const today = todayLocalDateOnly();
-      if(startToday.checked || !lastWateredInput.value){
-        last = today;
+      const phone = document.getElementById('phone').value.trim();
+      if (!phone) {
+        showError('phone-error', 'Please enter your phone number.');
+        document.getElementById('phone').classList.add('error-field');
+        valid = false;
       } else {
-        const [y,m,d] = lastWateredInput.value.split("-").map(Number);
-        last = new Date(y, m-1, d);
+        clearError('phone-error');
+        document.getElementById('phone').classList.remove('error-field');
       }
 
-      const plant = {
-        id: uid(),
-        name: name || preset.label,
-        type: preset.label,
-        frequency,
-        emoji,
-        lastWatered: last.toISOString()
-      };
-
-      plants.push(plant);
-      savePlants(plants);
-      // reset quick fields (keep type & freq for faster adding)
-      nameInput.value = "";
-      lastWateredInput.value = "";
-      render();
-    });
-
-    // Import / Export
-    importToggle.addEventListener("change", ()=>{
-      importWrap.style.display = importToggle.checked ? "grid" : "none";
-    });
-    importBtn.addEventListener("click", ()=>{
-      try{
-        const arr = JSON.parse(importJson.value);
-        if(!Array.isArray(arr)) throw new Error("Invalid JSON");
-        // Basic sanitize
-        const sanitized = arr.map(x => ({
-          id: x.id || uid(),
-          name: String(x.name || "Plant"),
-          type: String(x.type || "Custom"),
-          frequency: Math.max(1, parseInt(x.frequency,10) || 7),
-          emoji: String(x.emoji || "🌿"),
-          lastWatered: new Date(x.lastWatered || todayLocalDateOnly()).toISOString()
-        }));
-        plants = sanitized; savePlants(plants); render();
-        alert("Imported successfully.");
-      }catch(err){
-        alert("Import failed. Make sure it's valid JSON array.");
+      const tankEl = document.querySelector('input[name="tank"]:checked');
+      if (!tankEl) {
+        showError('tank-error', 'Please select a tank capacity.');
+        valid = false;
+      } else {
+        clearError('tank-error');
       }
+
+      const loc = getLocationValue();
+      if (!loc) {
+        showError('location-error', activeTab === 'gps'
+          ? 'Please click "Share My Current Location" to detect your location.'
+          : 'Please paste your Google Maps link.');
+        valid = false;
+      } else {
+        clearError('location-error');
+      }
+
+      return valid;
+    }
+
+    // ─── SUBMIT ───
+    async function handleSubmit() {
+      if (!validate()) return;
+
+      const phone   = document.getElementById('phone').value.trim();
+      const tankEl  = document.querySelector('input[name="tank"]:checked');
+      const tankVol = tankEl.value;
+      const price   = tankEl.dataset.price;
+      const loc     = getLocationValue();
+      const now     = new Date().toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu' });
+
+      // UI loading state
+      const btn    = document.getElementById('submit-btn');
+      const text   = document.getElementById('submit-text');
+      const spin   = document.getElementById('submit-spinner');
+      btn.disabled      = true;
+      text.textContent  = 'Sending…';
+      spin.style.display = 'block';
+
+      const emailBody = `
+New Water Tank Booking 🚰
+
+📞 Contact Number: ${phone}
+🪣 Tank Capacity: ${parseInt(tankVol).toLocaleString()} Litres
+💰 Price: Rs. ${price}
+📍 Delivery Location: ${loc}
+
+📅 Booked at: ${now}
+      `.trim();
+
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email:    'bestoneagency4@gmail.com',
+          from_name:   'BestOne Booking System',
+          phone:       phone,
+          tank:        `${parseInt(tankVol).toLocaleString()} Litres`,
+          price:       `Rs. ${price}`,
+          location:    loc,
+          booked_at:   now,
+          message:     emailBody,
+        });
+      } catch (err) {
+        console.warn('EmailJS error (booking still shown):', err);
+        // We still show success to user even if email fails
+        // For production, handle this appropriately
+      }
+
+      // Reset button
+      btn.disabled       = false;
+      text.textContent   = 'Book Now →';
+      spin.style.display = 'none';
+
+      // Show modal
+      document.getElementById('modal-phone').textContent = phone;
+      document.getElementById('modal-summary').innerHTML = `
+        <strong>Tank:</strong> ${parseInt(tankVol).toLocaleString()} Litres<br/>
+        <strong>Price:</strong> Rs. ${price}<br/>
+        <strong>Location:</strong> <a href="${loc}" target="_blank" style="color:#2d7dd2;word-break:break-all;">${loc.length > 50 ? loc.substring(0,50)+'…' : loc}</a><br/>
+        <strong>Time:</strong> ${now}
+      `;
+      document.getElementById('modal-overlay').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('show');
+      // Reset form
+      document.getElementById('phone').value = '';
+      document.querySelectorAll('input[name="tank"]').forEach(r => r.checked = false);
+      document.getElementById('map-link').value = '';
+      detectedGeoUrl = '';
+      document.getElementById('location-confirmed').classList.remove('show');
+      document.getElementById('map-preview').classList.remove('show');
+      document.getElementById('gps-text').textContent = 'Share My Current Location';
+      switchTab('link');
+    }
+
+    // Close modal on overlay click
+    document.getElementById('modal-overlay').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
     });
 
-    exportBtn.addEventListener("click", ()=>{
-      const data = JSON.stringify(plants, null, 2);
-      const blob = new Blob([data], {type:"application/json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "plant-water-reminder-backup.json";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+    // Clear errors on input
+    document.getElementById('phone').addEventListener('input', function() {
+      clearError('phone-error');
+      this.classList.remove('error-field');
     });
-
-    // Init
-    initPresets();
-    renderPlantLibrary();
-    render();
-
-    // Subtle daily ticker: update remaining/progress if page stays open across midnight
-    setInterval(()=>{
-      // if date changed, re-render
-      render();
-    }, 60*60*1000); // hourly
+    document.getElementById('map-link').addEventListener('input', function() {
+      clearError('location-error');
+    });
+    document.querySelectorAll('input[name="tank"]').forEach(r => {
+      r.addEventListener('change', () => clearError('tank-error'));
+    });
   </script>
 </body>
 </html>
